@@ -1,0 +1,22 @@
+{
+  "name": "oneassembly-telegram-bot",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "auth": "PLAYWRIGHT_BROWSERS_PATH=./.playwright-browsers node src/auth.mjs",
+    "chat-id": "node src/chat-id.mjs",
+    "check": "PLAYWRIGHT_BROWSERS_PATH=./.playwright-browsers node src/check-once.mjs",
+    "debug": "PLAYWRIGHT_BROWSERS_PATH=./.playwright-browsers node src/debug-page.mjs",
+    "export-current": "node src/export-current.mjs",
+    "install:browsers": "PLAYWRIGHT_BROWSERS_PATH=./.playwright-browsers npx playwright install chromium",
+    "print-session-env": "node src/print-session-env.mjs",
+    "start": "PLAYWRIGHT_BROWSERS_PATH=./.playwright-browsers node src/bot.mjs"
+  },
+  "dependencies": {
+    "playwright": "^1.52.0"
+  }
+}
