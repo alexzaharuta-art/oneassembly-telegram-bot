@@ -17,7 +17,9 @@ async function runCheck() {
   try {
     const { products, changes } = await checkMarketplace();
     if (changes.length) {
-      await sendTelegramMessage(formatChanges(changes));
+      for (const message of formatChanges(changes)) {
+        await sendTelegramMessage(message);
+      }
     } else {
       console.log(`[${new Date().toISOString()}] No changes. Products: ${products.length}`);
     }
@@ -30,17 +32,34 @@ async function runCheck() {
 }
 
 function formatChanges(changes) {
-  const lines = [`Найдены изменения: ${changes.length}`];
-  for (const change of changes.slice(0, 20)) {
-    const product = change.product;
-    const marker = change.type === "new" ? "Новый товар" : "Изменение";
-    const priceLine = product.price ? `\nЦена: ${escapeHtml(product.price)}` : "";
-    const unitLine = product.unitPrice ? ` (${escapeHtml(product.unitPrice)})` : "";
-    const meta = [product.quantity, product.category, product.location, product.condition].filter(Boolean).join(" | ");
-    const metaLine = meta ? `\n${escapeHtml(meta)}` : "";
-    const href = product.href || config.marketplaceUrl;
-    lines.push(`\n<b>${marker}</b>\n<a href="${escapeHtml(href)}">${escapeHtml(product.title)}</a>${metaLine}${priceLine}${unitLine}`);
-  }
-  if (changes.length > 20) lines.push(`\nИ еще: ${changes.length - 20}`);
-  return lines.join("\n");
+  return changes.slice(0, 20).map(formatChange);
+}
+
+function formatChange(change) {
+  const product = change.product;
+  const href = product.href || config.marketplaceUrl;
+  const title = `<a href="${escapeHtml(href)}">${escapeHtml(product.title)}</a>`;
+  const heading = change.type === "new" ? "🆕 <b>НОВЫЙ ЛОТ!</b>" : "♻️ <b>ИЗМЕНЕНИЕ ЛОТА!</b>";
+  const sku = product.sku || product.id || "-";
+  const quantity = normalizeQuantity(product.quantity);
+  const condition = product.condition || "-";
+  const location = product.location || "-";
+  const price = product.price || "-";
+  const unitPrice = product.unitPrice ? ` (${escapeHtml(product.unitPrice.replace(/\s*\/unit$/i, "/шт"))})` : "";
+
+  return [
+    heading,
+    `📱 ${title}`,
+    `📦 SKU: ${escapeHtml(sku)}`,
+    `🔢 Кол-во: ${escapeHtml(quantity)}`,
+    `🔤 Состояние: ${escapeHtml(condition)}`,
+    `📍 Локация: ${escapeHtml(location)}`,
+    `💰 США: <b>${escapeHtml(price)}</b>${unitPrice}`
+  ].join("\n");
+}
+
+function normalizeQuantity(value) {
+  const match = String(value || "").match(/\d+/);
+  if (!match) return "-";
+  return `${match[0]} шт.`;
 }
