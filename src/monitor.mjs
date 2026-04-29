@@ -16,9 +16,9 @@ export async function checkMarketplace() {
 
     await context.storageState({ path: config.storageStateFile });
 
-    const previous = await readJson(config.productsFile, {});
     const current = Object.fromEntries(products.map((product) => [product.id, product]));
-    const changes = diffProducts(previous, current);
+    const previous = await readJson(config.productsFile, null);
+    const changes = previous ? findNewProducts(previous, current) : [];
 
     await writeJson(config.productsFile, current);
     return { products, changes };
@@ -27,16 +27,11 @@ export async function checkMarketplace() {
   }
 }
 
-function diffProducts(previous, current) {
+function findNewProducts(previous, current) {
   const changes = [];
   for (const [id, product] of Object.entries(current)) {
-    const old = previous[id];
-    if (!old) {
+    if (!previous[id]) {
       changes.push({ type: "new", product });
-      continue;
-    }
-    if (old.price !== product.price || old.title !== product.title) {
-      changes.push({ type: "updated", product, old });
     }
   }
   return changes;
