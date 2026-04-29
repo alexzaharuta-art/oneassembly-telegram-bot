@@ -1,5 +1,5 @@
 import { config } from "./config.mjs";
-import { openMarketplace, loginWithCredentials, extractProducts } from "./oneassembly.mjs";
+import { openMarketplace, loginWithCredentials, extractAllProducts } from "./oneassembly.mjs";
 import { readJson, writeJson } from "./storage.mjs";
 
 export async function checkMarketplace() {
@@ -7,7 +7,7 @@ export async function checkMarketplace() {
   try {
     await loginWithCredentials(page);
 
-    const products = await extractProducts(page);
+    const products = await extractAllProducts(page);
     if (!products.length) {
       const title = await page.title().catch(() => "");
       const url = page.url();
