@@ -18,7 +18,7 @@ export async function checkMarketplace() {
 
     const current = Object.fromEntries(products.map((product) => [product.id, product]));
     const previous = await readJson(config.productsFile, null);
-    const changes = previous ? findNewProducts(previous, current) : [];
+    const changes = previous ? findNewOrRepricedProducts(previous, current) : [];
 
     await writeJson(config.productsFile, current);
     return { products, changes };
@@ -27,11 +27,16 @@ export async function checkMarketplace() {
   }
 }
 
-function findNewProducts(previous, current) {
+function findNewOrRepricedProducts(previous, current) {
   const changes = [];
   for (const [id, product] of Object.entries(current)) {
-    if (!previous[id]) {
+    const old = previous[id];
+    if (!old) {
       changes.push({ type: "new", product });
+      continue;
+    }
+    if (old.price !== product.price || old.unitPrice !== product.unitPrice) {
+      changes.push({ type: "price", product, old });
     }
   }
   return changes;
