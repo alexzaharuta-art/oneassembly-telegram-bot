@@ -84,7 +84,7 @@ export async function extractProducts(page) {
           href ||
           `${title}|${price}`;
 
-        return { id, title, price, unitPrice, quantity, category, location, condition, href, rawText };
+        return { id, sku: lotCode, title, price, unitPrice, quantity, category, location, condition, href, rawText };
       })
       .filter((item) => item.rawText && item.rawText.includes("Purchase Price:") && item.title);
 
