@@ -39,12 +39,13 @@ function formatChange(change) {
   const product = change.product;
   const href = product.href || config.marketplaceUrl;
   const title = `<a href="${escapeHtml(href)}">${escapeHtml(product.title)}</a>`;
-  const heading = change.type === "new" ? "🆕 <b>НОВЫЙ ЛОТ!</b>" : "♻️ <b>ИЗМЕНЕНИЕ ЛОТА!</b>";
+  const heading = change.type === "new" ? "🆕 <b>НОВЫЙ ЛОТ!</b>" : "💸 <b>ИЗМЕНЕНИЕ ЦЕНЫ!</b>";
   const sku = product.sku || product.id || "-";
   const quantity = normalizeQuantity(product.quantity);
   const condition = product.condition || "-";
   const location = product.location || "-";
   const price = product.price || "-";
+  const oldPrice = change.old?.price && change.old.price !== product.price ? ` ← было ${escapeHtml(change.old.price)}` : "";
   const unitPrice = product.unitPrice ? ` (${escapeHtml(product.unitPrice.replace(/\s*\/unit$/i, "/шт"))})` : "";
 
   return [
@@ -54,7 +55,7 @@ function formatChange(change) {
     `🔢 Кол-во: ${escapeHtml(quantity)}`,
     `🔤 Состояние: ${escapeHtml(condition)}`,
     `📍 Локация: ${escapeHtml(location)}`,
-    `💰 США: <b>${escapeHtml(price)}</b>${unitPrice}`
+    `💰 США: <b>${escapeHtml(price)}</b>${unitPrice}${oldPrice}`
   ].join("\n");
 }
 
