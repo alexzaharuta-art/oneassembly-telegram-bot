@@ -18,7 +18,7 @@ export async function openMarketplace({ headed = false } = {}) {
 }
 
 async function restoreStorageStateFromEnv() {
-  if (!config.storageStateBase64 || existsSync(config.storageStateFile)) return;
+  if (!config.storageStateBase64) return;
   const body = Buffer.from(config.storageStateBase64, "base64").toString("utf8");
   JSON.parse(body);
   await writeFile(config.storageStateFile, body, "utf8");
