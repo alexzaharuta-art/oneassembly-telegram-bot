@@ -4,10 +4,16 @@ import { readJson, writeJson } from "./storage.mjs";
 
 export async function checkMarketplace() {
   const { browser, context, page } = await openMarketplace();
+  page.setDefaultTimeout(config.checkTimeoutMs);
+  page.setDefaultNavigationTimeout(config.checkTimeoutMs);
   try {
-    await loginWithCredentials(page);
+    await withTimeout(loginWithCredentials(page), config.checkTimeoutMs, "Проверка входа зависла и была остановлена");
 
-    const products = await extractAllProducts(page);
+    const products = await withTimeout(
+      extractAllProducts(page),
+      config.checkTimeoutMs,
+      "Проверка маркетплейса зависла и была остановлена"
+    );
     if (!products.length) {
       const title = await page.title().catch(() => "");
       const url = page.url();
@@ -17,7 +23,9 @@ export async function checkMarketplace() {
       throw new Error(`No products found. Page title: ${title || "unknown"}. URL: ${url}`);
     }
 
-    await saveStorageState(context);
+    await withTimeout(saveStorageState(context), 15000, "Сохранение сессии заняло слишком много времени").catch((error) => {
+      console.warn(`Could not save browser session: ${error.message}`);
+    });
 
     const current = Object.fromEntries(products.map((product) => [product.id, product]));
     const previous = await readJson(config.productsFile, null);
@@ -26,8 +34,19 @@ export async function checkMarketplace() {
     await writeJson(config.productsFile, current);
     return { products, changes };
   } finally {
-    await browser.close();
+    await withTimeout(browser.close(), 15000, "Браузер не закрылся за 15 секунд").catch((error) => {
+      console.warn(error.message);
+    });
   }
+}
+
+function withTimeout(promise, timeoutMs, message) {
+  let timeout;
+  const timer = new Promise((_, reject) => {
+    timeout = setTimeout(() => reject(new Error(message)), timeoutMs);
+  });
+
+  return Promise.race([promise, timer]).finally(() => clearTimeout(timeout));
 }
 
 function findNewOrRepricedProducts(previous, current) {
