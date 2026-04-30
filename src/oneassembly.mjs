@@ -19,8 +19,13 @@ export async function openMarketplace({ headed = false } = {}) {
 
 async function restoreStorageStateFromEnv() {
   if (!config.storageStateBase64) return;
-  const body = Buffer.from(config.storageStateBase64, "base64").toString("utf8");
-  JSON.parse(body);
+  let body = "";
+  try {
+    body = Buffer.from(config.storageStateBase64.trim(), "base64").toString("utf8");
+    JSON.parse(body);
+  } catch {
+    throw new Error("ONEASSEMBLY_STORAGE_STATE_BASE64 в Railway заполнен неправильно. Обнови сессию на Mac через npm run auth, потом скопируй значение командой: npm run print-session-env | tail -n 1 | pbcopy");
+  }
   await writeFile(config.storageStateFile, body, "utf8");
 }
 
