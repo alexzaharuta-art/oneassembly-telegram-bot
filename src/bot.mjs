@@ -7,6 +7,7 @@ requireTelegramConfig();
 
 let running = false;
 let sentStartupSnapshot = false;
+let lastErrorMessage = "";
 
 await sendTelegramMessage("OneAssembly бот запущен. Проверяю маркетплейс.");
 await runCheck();
@@ -40,7 +41,12 @@ async function runCheck() {
     }
   } catch (error) {
     console.error(error);
-    await sendTelegramMessage(`Ошибка проверки OneAssembly:\n${escapeHtml(error.message)}`).catch(console.error);
+    if (error.message !== lastErrorMessage) {
+      lastErrorMessage = error.message;
+      await sendTelegramMessage(`Ошибка проверки OneAssembly:\n${escapeHtml(error.message)}`).catch(console.error);
+    } else {
+      console.log(`[${new Date().toISOString()}] Repeated error suppressed: ${error.message}`);
+    }
   } finally {
     running = false;
   }
