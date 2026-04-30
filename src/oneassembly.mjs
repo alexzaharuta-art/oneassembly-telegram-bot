@@ -36,13 +36,29 @@ export async function loginWithCredentials(page) {
   await passwordInput.fill(config.password);
   await page.locator('button[type="submit"], button:has-text("Log in"), button:has-text("Sign in")').first().click();
   await page.waitForLoadState("networkidle", { timeout: 60000 }).catch(() => {});
-  await page.context().storageState({ path: config.storageStateFile });
+  await saveStorageState(page.context());
   return true;
+}
+
+export async function saveStorageState(context) {
+  try {
+    await context.storageState({ path: config.storageStateFile });
+  } catch (error) {
+    console.warn(`Could not save browser session: ${error.message}`);
+  }
+}
+
+export async function assertMarketplaceSession(page) {
+  const url = page.url();
+  if (/login\.oneassembly\.com|recaptcha\.net|auth0\.com/i.test(url)) {
+    throw new Error("OneAssembly запросил повторный вход или reCAPTCHA. Нужно обновить сессию: запусти npm run auth на Mac, затем обнови ONEASSEMBLY_STORAGE_STATE_BASE64 в Railway.");
+  }
 }
 
 export async function extractProducts(page) {
   await page.waitForLoadState("networkidle", { timeout: 60000 }).catch(() => {});
   await page.waitForTimeout(2500);
+  await assertMarketplaceSession(page);
 
   return page.evaluate((selectors) => {
     const text = (node) => (node?.innerText || node?.textContent || "").replace(/\s+/g, " ").trim();
