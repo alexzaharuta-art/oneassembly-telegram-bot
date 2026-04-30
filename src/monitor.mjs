@@ -1,5 +1,5 @@
 import { config } from "./config.mjs";
-import { openMarketplace, loginWithCredentials, extractAllProducts } from "./oneassembly.mjs";
+import { openMarketplace, loginWithCredentials, extractAllProducts, saveStorageState } from "./oneassembly.mjs";
 import { readJson, writeJson } from "./storage.mjs";
 
 export async function checkMarketplace() {
@@ -14,7 +14,7 @@ export async function checkMarketplace() {
       throw new Error(`No products found. Page title: ${title || "unknown"}. URL: ${url}`);
     }
 
-    await context.storageState({ path: config.storageStateFile });
+    await saveStorageState(context);
 
     const current = Object.fromEntries(products.map((product) => [product.id, product]));
     const previous = await readJson(config.productsFile, null);
