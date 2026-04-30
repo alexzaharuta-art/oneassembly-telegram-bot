@@ -23,6 +23,7 @@ async function runCheck() {
 
   try {
     const { products, changes } = await checkMarketplace();
+    lastErrorMessage = "";
     const durationSeconds = ((Date.now() - startedAt) / 1000).toFixed(1);
     if (config.sendSnapshotOnStart && !sentStartupSnapshot) {
       sentStartupSnapshot = true;
