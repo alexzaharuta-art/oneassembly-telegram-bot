@@ -97,3 +97,51 @@ export async function extractProducts(page) {
     });
   }, config.selectors);
 }
+
+export async function extractAllProducts(page, { maxPages = 20 } = {}) {
+  const all = [];
+  const seen = new Set();
+
+  for (let pageNumber = 1; pageNumber <= maxPages; pageNumber += 1) {
+    const products = await extractProducts(page);
+    for (const product of products) {
+      if (seen.has(product.id)) continue;
+      seen.add(product.id);
+      all.push(product);
+    }
+
+    const nextButton = page.locator('button:has-text("Next")').last();
+    if (!(await nextButton.count())) break;
+    if (!(await nextButton.isVisible().catch(() => false))) break;
+    if (!(await nextButton.isEnabled().catch(() => false))) break;
+
+    const firstProductId = products[0]?.id || "";
+    await nextButton.click();
+    await page.waitForLoadState("networkidle", { timeout: 60000 }).catch(() => {});
+
+    if (firstProductId) {
+      await page
+        .waitForFunction(
+          ({ oldId, selectors }) => {
+            const text = (node) => (node?.innerText || node?.textContent || "").replace(/\s+/g, " ").trim();
+            const items = selectors.item
+              ? [...document.querySelectorAll(selectors.item)]
+              : [...document.querySelectorAll("main ul > li")];
+            const first = items.find((item) => text(item).includes("Purchase Price:"));
+            if (!first) return false;
+            const details = [...first.querySelectorAll("p.text-grey, span.text-grey")].map(text).filter(Boolean);
+            const lotCode = details.find((value) => /^[A-Z0-9]{6,12}$/.test(value)) || "";
+            const title = text(first.querySelector("h2"));
+            return (lotCode || title) && (lotCode || title) !== oldId;
+          },
+          { oldId: firstProductId, selectors: config.selectors },
+          { timeout: 10000 }
+        )
+        .catch(() => {});
+    } else {
+      await page.waitForTimeout(1500);
+    }
+  }
+
+  return all;
+}
