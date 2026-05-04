@@ -6,7 +6,7 @@ import { config } from "./config.mjs";
 export async function openMarketplace({ headed = false } = {}) {
   await mkdir(config.dataDir, { recursive: true });
   await restoreStorageStateFromEnv();
-  const browser = await chromium.launch({ headless: headed ? false : config.headless });
+  const browser = await launchBrowser({ headed });
   const contextOptions = {};
   if (existsSync(config.storageStateFile)) {
     contextOptions.storageState = config.storageStateFile;
@@ -15,6 +15,30 @@ export async function openMarketplace({ headed = false } = {}) {
   const page = await context.newPage();
   await page.goto(config.marketplaceUrl, { waitUntil: "domcontentloaded", timeout: 60000 });
   return { browser, context, page };
+}
+
+async function launchBrowser({ headed }) {
+  const options = {
+    headless: headed ? false : config.headless,
+    args: [
+      "--no-sandbox",
+      "--disable-setuid-sandbox",
+      "--disable-dev-shm-usage",
+      "--disable-gpu"
+    ]
+  };
+
+  let lastError;
+  for (let attempt = 1; attempt <= 2; attempt += 1) {
+    try {
+      return await chromium.launch(options);
+    } catch (error) {
+      lastError = error;
+      console.warn(`Browser launch attempt ${attempt} failed: ${error.message}`);
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+    }
+  }
+  throw lastError;
 }
 
 async function restoreStorageStateFromEnv() {
