@@ -18,20 +18,26 @@ export async function openMarketplace({ headed = false } = {}) {
 }
 
 async function launchBrowser({ headed }) {
-  const options = {
+  const baseOptions = {
     headless: headed ? false : config.headless,
     args: [
       "--no-sandbox",
       "--disable-setuid-sandbox",
       "--disable-dev-shm-usage",
-      "--disable-gpu"
+      "--disable-gpu",
+      "--single-process",
+      "--no-zygote"
     ]
   };
+  const launchOptions = [
+    baseOptions,
+    { ...baseOptions, channel: "chromium" }
+  ];
 
   let lastError;
-  for (let attempt = 1; attempt <= 2; attempt += 1) {
+  for (let attempt = 1; attempt <= launchOptions.length; attempt += 1) {
     try {
-      return await chromium.launch(options);
+      return await chromium.launch(launchOptions[attempt - 1]);
     } catch (error) {
       lastError = error;
       console.warn(`Browser launch attempt ${attempt} failed: ${error.message}`);
