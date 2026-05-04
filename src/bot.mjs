@@ -9,7 +9,7 @@ let running = false;
 let sentStartupSnapshot = false;
 let lastErrorMessage = "";
 
-await sendTelegramMessage("OneAssembly бот запущен. Проверяю маркетплейс.");
+await safeSendTelegramMessage("OneAssembly бот запущен. Проверяю маркетплейс.");
 await runCheck();
 setInterval(runCheck, config.checkIntervalMs);
 
@@ -28,14 +28,14 @@ async function runCheck() {
     if (config.sendSnapshotOnStart && !sentStartupSnapshot) {
       sentStartupSnapshot = true;
       console.log(`[${new Date().toISOString()}] Snapshot check completed in ${durationSeconds}s. Products: ${products.length}`);
-      await sendTelegramMessage(`📋 <b>Текущая база OneAssembly</b>\nВсего товаров: ${products.length}`);
+      await safeSendTelegramMessage(`📋 <b>Текущая база OneAssembly</b>\nВсего товаров: ${products.length}`);
       for (const product of products) {
-        await sendTelegramMessage(formatProductMessage(product, { type: "new" }));
+        await safeSendTelegramMessage(formatProductMessage(product, { type: "new" }));
       }
     } else if (changes.length) {
       console.log(`[${new Date().toISOString()}] Check completed in ${durationSeconds}s. Products: ${products.length}. Changes: ${changes.length}`);
       for (const message of formatChanges(changes)) {
-        await sendTelegramMessage(message);
+        await safeSendTelegramMessage(message);
       }
     } else {
       console.log(`[${new Date().toISOString()}] No changes. Products: ${products.length}. Duration: ${durationSeconds}s`);
@@ -44,12 +44,20 @@ async function runCheck() {
     console.error(error);
     if (error.message !== lastErrorMessage) {
       lastErrorMessage = error.message;
-      await sendTelegramMessage(`Ошибка проверки OneAssembly:\n${escapeHtml(error.message)}`).catch(console.error);
+      await safeSendTelegramMessage(`Ошибка проверки OneAssembly:\n${escapeHtml(error.message)}`);
     } else {
       console.log(`[${new Date().toISOString()}] Repeated error suppressed: ${error.message}`);
     }
   } finally {
     running = false;
+  }
+}
+
+async function safeSendTelegramMessage(message) {
+  try {
+    await sendTelegramMessage(message);
+  } catch (error) {
+    console.error(`Telegram message was not delivered: ${error.message}`);
   }
 }
 
