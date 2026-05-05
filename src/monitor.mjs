@@ -29,10 +29,11 @@ export async function checkMarketplace() {
 
     const current = Object.fromEntries(products.map((product) => [product.id, product]));
     const previous = await readJson(config.productsFile, null);
+    const isInitialBaseline = !previous;
     const changes = previous ? findNewOrRepricedProducts(previous, current) : [];
 
     await writeJson(config.productsFile, current);
-    return { products, changes };
+    return { products, changes, isInitialBaseline };
   } finally {
     await withTimeout(browser.close(), 15000, "Браузер не закрылся за 15 секунд").catch((error) => {
       console.warn(error.message);
