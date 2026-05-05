@@ -8,12 +8,20 @@ requireTelegramConfig();
 let running = false;
 let sentStartupSnapshot = false;
 let lastErrorMessage = "";
+let pausedUntil = 0;
 
+console.log(
+  `[${new Date().toISOString()}] Bot starting. Check interval: ${Math.round(config.checkIntervalMs / 1000)}s. Auth error cooldown: ${Math.round(config.authErrorCooldownMs / 60000)}m.`
+);
 await safeSendTelegramMessage("OneAssembly бот запущен. Проверяю маркетплейс.");
 await runCheck();
 setInterval(runCheck, config.checkIntervalMs);
 
 async function runCheck() {
+  if (Date.now() < pausedUntil) {
+    console.log(`[${new Date().toISOString()}] OneAssembly auth cooldown active. Skipping check until ${new Date(pausedUntil).toISOString()}.`);
+    return;
+  }
   if (running) {
     console.log(`[${new Date().toISOString()}] Previous check is still running. Skipping this tick.`);
     return;
@@ -42,6 +50,9 @@ async function runCheck() {
     }
   } catch (error) {
     console.error(error);
+    if (isAuthError(error)) {
+      pausedUntil = Date.now() + config.authErrorCooldownMs;
+    }
     if (error.message !== lastErrorMessage) {
       lastErrorMessage = error.message;
       await safeSendTelegramMessage(`Ошибка проверки OneAssembly:\n${escapeHtml(error.message)}`);
@@ -51,6 +62,10 @@ async function runCheck() {
   } finally {
     running = false;
   }
+}
+
+function isAuthError(error) {
+  return /повторный вход|recaptcha|captcha|login|auth/i.test(error.message || "");
 }
 
 async function safeSendTelegramMessage(message) {
