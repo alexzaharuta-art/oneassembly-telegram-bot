@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 const root = fileURLToPath(new URL("..", import.meta.url));
 const MIN_CHECK_INTERVAL_MS = 180000;
 const DEFAULT_AUTH_ERROR_COOLDOWN_MS = 1800000;
+const DEFAULT_COMMAND_POLL_MS = 10000;
 
 await loadDotEnv(join(root, ".env"));
 
@@ -20,6 +21,7 @@ export const config = {
   checkIntervalMs: Math.max(numberEnv("CHECK_INTERVAL_MS", MIN_CHECK_INTERVAL_MS), MIN_CHECK_INTERVAL_MS),
   checkTimeoutMs: numberEnv("CHECK_TIMEOUT_MS", 180000),
   authErrorCooldownMs: numberEnv("AUTH_ERROR_COOLDOWN_MS", DEFAULT_AUTH_ERROR_COOLDOWN_MS),
+  commandPollMs: numberEnv("COMMAND_POLL_MS", DEFAULT_COMMAND_POLL_MS),
   sendSnapshotOnStart: env("SEND_SNAPSHOT_ON_START", "false") === "true",
   headless: env("HEADLESS", "true") !== "false",
   email: env("ONEASSEMBLY_EMAIL"),
