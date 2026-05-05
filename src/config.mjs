@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
+const MIN_CHECK_INTERVAL_MS = 180000;
 
 await loadDotEnv(join(root, ".env"));
 
@@ -15,7 +16,7 @@ export const config = {
   telegramToken: env("TELEGRAM_BOT_TOKEN"),
   telegramChatId: env("TELEGRAM_CHAT_ID"),
   marketplaceUrl: env("MARKETPLACE_URL", "https://app.oneassembly.com/buyer/dashboard/marketplace"),
-  checkIntervalMs: numberEnv("CHECK_INTERVAL_MS", 180000),
+  checkIntervalMs: Math.max(numberEnv("CHECK_INTERVAL_MS", MIN_CHECK_INTERVAL_MS), MIN_CHECK_INTERVAL_MS),
   checkTimeoutMs: numberEnv("CHECK_TIMEOUT_MS", 180000),
   sendSnapshotOnStart: env("SEND_SNAPSHOT_ON_START", "false") === "true",
   headless: env("HEADLESS", "true") !== "false",
