@@ -6,7 +6,6 @@ import { formatProductMessage } from "./format-message.mjs";
 requireTelegramConfig();
 
 let running = false;
-let sentStartupSnapshot = false;
 let lastErrorMessage = "";
 let pausedUntil = 0;
 
@@ -30,15 +29,18 @@ async function runCheck() {
   const startedAt = Date.now();
 
   try {
-    const { products, changes } = await checkMarketplace();
+    const { products, changes, isInitialBaseline } = await checkMarketplace();
     lastErrorMessage = "";
     const durationSeconds = ((Date.now() - startedAt) / 1000).toFixed(1);
-    if (config.sendSnapshotOnStart && !sentStartupSnapshot) {
-      sentStartupSnapshot = true;
-      console.log(`[${new Date().toISOString()}] Snapshot check completed in ${durationSeconds}s. Products: ${products.length}`);
-      await safeSendTelegramMessage(`📋 <b>Текущая база OneAssembly</b>\nВсего товаров: ${products.length}`);
-      for (const product of products) {
-        await safeSendTelegramMessage(formatProductMessage(product, { type: "new" }));
+    if (isInitialBaseline) {
+      console.log(`[${new Date().toISOString()}] Initial baseline saved in ${durationSeconds}s. Products: ${products.length}`);
+      await safeSendTelegramMessage(`📋 <b>База OneAssembly создана</b>\nЗагружено товаров: ${products.length}\nДальше буду присылать только новые товары и изменения цены.`);
+      if (config.sendSnapshotOnStart) {
+        console.log(`[${new Date().toISOString()}] Sending initial snapshot. Products: ${products.length}`);
+        await safeSendTelegramMessage(`📋 <b>Первичная выгрузка OneAssembly</b>\nВсего товаров: ${products.length}`);
+        for (const product of products) {
+          await safeSendTelegramMessage(formatProductMessage(product, { type: "new" }));
+        }
       }
     } else if (changes.length) {
       console.log(`[${new Date().toISOString()}] Check completed in ${durationSeconds}s. Products: ${products.length}. Changes: ${changes.length}`);
