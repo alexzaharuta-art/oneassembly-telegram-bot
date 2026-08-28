@@ -1,5 +1,6 @@
 import { existsSync } from "node:fs";
-import { mkdir, writeFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { chromium } from "playwright";
 import { config } from "./config.mjs";
 
@@ -48,15 +49,35 @@ async function launchBrowser({ headed }) {
 }
 
 async function restoreStorageStateFromEnv() {
-  if (!config.storageStateBase64) return;
+  await syncStorageStateFromEnv({
+    storageStateBase64: config.storageStateBase64,
+    storageStateFile: config.storageStateFile
+  });
+}
+
+export async function syncStorageStateFromEnv({ storageStateBase64, storageStateFile }) {
+  if (!storageStateBase64) return false;
+
+  const encodedState = storageStateBase64.trim();
+  const markerFile = `${storageStateFile}.bootstrap.sha256`;
+  const sourceHash = createHash("sha256").update(encodedState).digest("hex");
+  const appliedHash = await readFile(markerFile, "utf8").catch(() => "");
+
+  if (existsSync(storageStateFile) && appliedHash.trim() === sourceHash) {
+    return false;
+  }
+
   let body = "";
   try {
-    body = Buffer.from(config.storageStateBase64.trim(), "base64").toString("utf8");
+    body = Buffer.from(encodedState, "base64").toString("utf8");
     JSON.parse(body);
   } catch {
     throw new Error("ONEASSEMBLY_STORAGE_STATE_BASE64 в Railway заполнен неправильно. Обнови сессию на Mac через npm run auth, потом скопируй значение командой: npm run print-session-env | tail -n 1 | pbcopy");
   }
-  await writeFile(config.storageStateFile, body, "utf8");
+
+  await writeFile(storageStateFile, body, "utf8");
+  await writeFile(markerFile, `${sourceHash}\n`, "utf8");
+  return true;
 }
 
 export async function loginWithCredentials(page) {
