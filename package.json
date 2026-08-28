@@ -15,7 +15,8 @@
     "install:browsers": "PLAYWRIGHT_BROWSERS_PATH=./.playwright-browsers npx playwright install chromium",
     "print-session-env": "node src/print-session-env.mjs",
     "resend-current": "node src/resend-current.mjs",
-    "start": "PLAYWRIGHT_BROWSERS_PATH=./.playwright-browsers node src/bot.mjs"
+    "start": "PLAYWRIGHT_BROWSERS_PATH=./.playwright-browsers node src/bot.mjs",
+    "test": "node --test"
   },
   "dependencies": {
     "playwright": "1.59.1"
