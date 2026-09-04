@@ -7,6 +7,7 @@ const root = fileURLToPath(new URL("..", import.meta.url));
 const MIN_CHECK_INTERVAL_MS = 180000;
 const DEFAULT_AUTH_ERROR_COOLDOWN_MS = 1800000;
 const DEFAULT_COMMAND_POLL_MS = 10000;
+const DEFAULT_CHECK_JITTER_MS = 45000;
 
 await loadDotEnv(join(root, ".env"));
 
@@ -19,6 +20,7 @@ export const config = {
   telegramChatId: env("TELEGRAM_CHAT_ID"),
   marketplaceUrl: env("MARKETPLACE_URL", "https://app.oneassembly.com/buyer/dashboard/marketplace"),
   checkIntervalMs: Math.max(numberEnv("CHECK_INTERVAL_MS", MIN_CHECK_INTERVAL_MS), MIN_CHECK_INTERVAL_MS),
+  checkJitterMs: numberEnv("CHECK_JITTER_MS", DEFAULT_CHECK_JITTER_MS),
   checkTimeoutMs: numberEnv("CHECK_TIMEOUT_MS", 180000),
   authErrorCooldownMs: numberEnv("AUTH_ERROR_COOLDOWN_MS", DEFAULT_AUTH_ERROR_COOLDOWN_MS),
   commandPollMs: numberEnv("COMMAND_POLL_MS", DEFAULT_COMMAND_POLL_MS),

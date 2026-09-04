@@ -112,8 +112,16 @@ export async function assertMarketplaceSession(page) {
 }
 
 export async function extractProducts(page) {
-  await page.waitForLoadState("networkidle", { timeout: 60000 }).catch(() => {});
-  await page.waitForTimeout(2500);
+  await page
+    .waitForFunction(
+      () =>
+        document.body?.innerText?.includes("Purchase Price:") ||
+        /login\.oneassembly\.com|recaptcha\.net|auth0\.com/i.test(location.href),
+      undefined,
+      { timeout: 15000 }
+    )
+    .catch(() => {});
+  await page.waitForTimeout(750);
   await assertMarketplaceSession(page);
 
   return page.evaluate((selectors) => {
@@ -173,9 +181,14 @@ export async function extractProducts(page) {
 export async function extractAllProducts(page, { maxPages = 20 } = {}) {
   const all = [];
   const seen = new Set();
+  const seenPages = new Set();
 
   for (let pageNumber = 1; pageNumber <= maxPages; pageNumber += 1) {
     const products = await extractProducts(page);
+    const pageSignature = products.map((product) => product.id).join("|");
+    if (!pageSignature || seenPages.has(pageSignature)) break;
+    seenPages.add(pageSignature);
+
     for (const product of products) {
       if (seen.has(product.id)) continue;
       seen.add(product.id);
@@ -187,31 +200,27 @@ export async function extractAllProducts(page, { maxPages = 20 } = {}) {
     if (!(await nextButton.isVisible().catch(() => false))) break;
     if (!(await nextButton.isEnabled().catch(() => false))) break;
 
-    const firstProductId = products[0]?.id || "";
+    const firstProductText = products[0]?.rawText || "";
     await nextButton.click();
-    await page.waitForLoadState("networkidle", { timeout: 60000 }).catch(() => {});
-
-    if (firstProductId) {
-      await page
+    if (firstProductText) {
+      const pageChanged = await page
         .waitForFunction(
-          ({ oldId, selectors }) => {
+          ({ oldText, selectors }) => {
             const text = (node) => (node?.innerText || node?.textContent || "").replace(/\s+/g, " ").trim();
             const items = selectors.item
               ? [...document.querySelectorAll(selectors.item)]
               : [...document.querySelectorAll("main ul > li")];
             const first = items.find((item) => text(item).includes("Purchase Price:"));
-            if (!first) return false;
-            const details = [...first.querySelectorAll("p.text-grey, span.text-grey")].map(text).filter(Boolean);
-            const lotCode = details.find((value) => /^[A-Z0-9]{6,12}$/.test(value)) || "";
-            const title = text(first.querySelector("h2"));
-            return (lotCode || title) && (lotCode || title) !== oldId;
+            return first ? text(first) !== oldText : false;
           },
-          { oldId: firstProductId, selectors: config.selectors },
-          { timeout: 10000 }
+          { oldText: firstProductText, selectors: config.selectors },
+          { timeout: 15000 }
         )
-        .catch(() => {});
+        .then(() => true)
+        .catch(() => false);
+      if (!pageChanged) break;
     } else {
-      await page.waitForTimeout(1500);
+      break;
     }
   }
 

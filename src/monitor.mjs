@@ -2,8 +2,10 @@ import { config } from "./config.mjs";
 import { openMarketplace, loginWithCredentials, extractAllProducts, saveStorageState } from "./oneassembly.mjs";
 import { readJson, writeJson } from "./storage.mjs";
 
+let activeSession = null;
+
 export async function checkMarketplace() {
-  const { browser, context, page } = await openMarketplace();
+  const { context, page } = await getMarketplaceSession();
   page.setDefaultTimeout(config.checkTimeoutMs);
   page.setDefaultNavigationTimeout(config.checkTimeoutMs);
   try {
@@ -34,11 +36,40 @@ export async function checkMarketplace() {
 
     await writeJson(config.productsFile, current);
     return { products, changes, isInitialBaseline };
-  } finally {
-    await withTimeout(browser.close(), 15000, "Браузер не закрылся за 15 секунд").catch((error) => {
-      console.warn(error.message);
-    });
+  } catch (error) {
+    await resetMarketplaceSession();
+    throw error;
   }
+}
+
+async function getMarketplaceSession() {
+  if (
+    activeSession?.browser?.isConnected() &&
+    !activeSession.page.isClosed()
+  ) {
+    await activeSession.page.goto(config.marketplaceUrl, {
+      waitUntil: "domcontentloaded",
+      timeout: config.checkTimeoutMs
+    });
+    return activeSession;
+  }
+
+  await resetMarketplaceSession();
+  activeSession = await openMarketplace();
+  return activeSession;
+}
+
+export async function closeMarketplaceSession() {
+  await resetMarketplaceSession();
+}
+
+async function resetMarketplaceSession() {
+  const session = activeSession;
+  activeSession = null;
+  if (!session?.browser) return;
+  await withTimeout(session.browser.close(), 15000, "Браузер не закрылся за 15 секунд").catch((error) => {
+    console.warn(error.message);
+  });
 }
 
 function withTimeout(promise, timeoutMs, message) {

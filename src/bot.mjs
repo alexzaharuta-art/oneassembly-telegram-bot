@@ -5,19 +5,31 @@ import { formatProductMessage } from "./format-message.mjs";
 
 requireTelegramConfig();
 
+const snapshotCommands = new Set(["/snapshot", "/stock", "/list", "/products", "/all"]);
+
 let running = false;
+let commandPolling = false;
+let snapshotQueued = false;
 let lastErrorMessage = "";
 let pausedUntil = 0;
 let updateOffset = 0;
 
 console.log(
-  `[${new Date().toISOString()}] Bot starting. Check interval: ${Math.round(config.checkIntervalMs / 1000)}s. Auth error cooldown: ${Math.round(config.authErrorCooldownMs / 60000)}m.`
+  `[${new Date().toISOString()}] Bot starting. Check interval: ${Math.round(config.checkIntervalMs / 1000)}s plus up to ${Math.round(config.checkJitterMs / 1000)}s jitter. Auth error cooldown: ${Math.round(config.authErrorCooldownMs / 60000)}m.`
 );
 await safeSendTelegramMessage("OneAssembly бот запущен. Проверяю маркетплейс.");
 await runCheck();
 await pollTelegramCommands();
-setInterval(runCheck, config.checkIntervalMs);
+scheduleNextCheck();
 setInterval(pollTelegramCommands, config.commandPollMs);
+
+function scheduleNextCheck() {
+  const jitter = Math.floor(Math.random() * (config.checkJitterMs + 1));
+  setTimeout(async () => {
+    await runCheck();
+    scheduleNextCheck();
+  }, config.checkIntervalMs + jitter);
+}
 
 async function runCheck() {
   if (Date.now() < pausedUntil) {
@@ -66,10 +78,16 @@ async function runCheck() {
     }
   } finally {
     running = false;
+    if (snapshotQueued) {
+      snapshotQueued = false;
+      setTimeout(sendManualSnapshot, 0);
+    }
   }
 }
 
 async function pollTelegramCommands() {
+  if (commandPolling) return;
+  commandPolling = true;
   try {
     const updates = await getTelegramUpdates(updateOffset);
     for (const update of updates) {
@@ -78,24 +96,34 @@ async function pollTelegramCommands() {
     }
   } catch (error) {
     console.error(`Could not read Telegram commands: ${error.message}`);
+  } finally {
+    commandPolling = false;
   }
 }
 
 async function handleTelegramCommand(message) {
   if (!message?.text) return;
-  if (String(message.chat?.id) !== String(config.telegramChatId)) return;
-
   const command = message.text.trim().split(/\s+/)[0].split("@")[0].toLowerCase();
-  if (command === "/snapshot") {
+  const allowedChat = String(message.chat?.id) === String(config.telegramChatId);
+  console.log(`[${new Date().toISOString()}] Telegram command received: ${command || "(empty)"}. Allowed chat: ${allowedChat}.`);
+  if (!allowedChat) return;
+
+  if (snapshotCommands.has(command)) {
+    await safeSendTelegramMessage("Команда принята. Готовлю полный список товаров OneAssembly...");
+    if (running) {
+      snapshotQueued = true;
+      console.log(`[${new Date().toISOString()}] Manual snapshot queued until the current check finishes.`);
+      return;
+    }
     await sendManualSnapshot();
   } else if (command === "/start") {
-    await safeSendTelegramMessage("Бот работает. Команда /snapshot пришлет текущий список товаров вручную.");
+    await safeSendTelegramMessage("Бот работает. Команда /stock пришлет полный текущий список товаров.");
   }
 }
 
 async function sendManualSnapshot() {
   if (running) {
-    await safeSendTelegramMessage("Сейчас уже идет проверка OneAssembly. Попробуй /snapshot еще раз через минуту.");
+    snapshotQueued = true;
     return;
   }
   if (Date.now() < pausedUntil) {
