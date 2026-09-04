@@ -42,6 +42,25 @@ export async function getTelegramUpdates(offset = 0) {
   return data.result || [];
 }
 
+export async function setTelegramCommands(commands) {
+  requireTelegramConfig();
+
+  const response = await fetch(`https://api.telegram.org/bot${config.telegramToken}/setMyCommands`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ commands })
+  });
+  const body = await response.text();
+  if (!response.ok) {
+    throw new Error(`Telegram API error ${response.status}: ${body}`);
+  }
+
+  const data = JSON.parse(body);
+  if (!data.ok) {
+    throw new Error(`Telegram API error: ${body}`);
+  }
+}
+
 export function escapeHtml(value) {
   return String(value ?? "")
     .replaceAll("&", "&amp;")
